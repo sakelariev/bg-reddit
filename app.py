@@ -32,6 +32,7 @@ monthly_bigram = pd.concat((pd.read_csv(f, parse_dates=['date']) for f in all_bi
 
 # Main app 
 app = Dash(__name__, external_stylesheets=external_stylesheets, external_scripts=external_scripts)
+server = app.server
 
 fig = go.Figure()
 fig.update_xaxes(showgrid=False, ticks="inside")
