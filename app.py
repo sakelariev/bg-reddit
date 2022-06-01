@@ -1,3 +1,4 @@
+# coding=utf8
 from dash import Dash, callback, html, dcc, dash_table, Input, Output, State, MATCH, ALL
 from dash.exceptions import PreventUpdate
 import dash_bootstrap_components as dbc
@@ -7,25 +8,26 @@ import locale
 import re
 import pandas as pd
 import random
+import glob
+
 
 # External stylesheets and scripts
 FA = "https://use.fontawesome.com/releases/v5.10.2/css/all.css"
 external_stylesheets = [dbc.themes.FLATLY, FA]
 external_scripts = ["https://cdn.plot.ly/plotly-locale-bg-latest.js"]
 
-monthly_unigram = pd.read_csv("data/monthly_unigram.csv", index_col=0, parse_dates=['date'])
-# monthly_unigram = monthly_unigram.sort_values(by=['date'])
-monthly_bigram = pd.read_csv("data/monthly_bigram.csv", index_col=0, parse_dates=['date'])
-# monthly_bigram = monthly_bigram.sort_values(by=['date'])
-# monthly_trigram = pd.read_csv("data/monthly_trigram.csv", index_col=0, parse_dates=['date'])
 
-# Try to normalize dates to begining of month
-monthly_unigram['date'] = monthly_unigram['date'] - pd.offsets.MonthBegin(1, normalize=True)
-monthly_bigram['date'] = monthly_bigram['date'] - pd.offsets.MonthBegin(1, normalize=True)
+# Concatanate all csv files into one 
+all_unigram = glob.glob("data/unigram/*.csv")
+monthly_unigram = pd.concat((pd.read_csv(f, parse_dates=['date']) for f in all_unigram))
 
+all_bigram = glob.glob("data/bigram/*.csv")
+monthly_bigram = pd.concat((pd.read_csv(f, parse_dates=['date']) for f in all_bigram))
 
+# monthly_unigram = pd.read_csv("data/monthly_unigram.csv", index_col=0, parse_dates=['date'])
+# monthly_bigram = pd.read_csv("data/monthly_bigram.csv", index_col=0, parse_dates=['date'])
 
-
+# Main app 
 app = Dash(__name__, external_stylesheets=external_stylesheets, external_scripts=external_scripts)
 
 fig = go.Figure()
@@ -53,20 +55,23 @@ def check_string(string):
         df = monthly_bigram[monthly_bigram['bigram'] == string]
         missing_state = data_missing(df)
         forbidden_state = False
-    elif ngram == 3:
-        df = 0
-        print("За момента не се поддържат фрази с повече от 2 думи.")
-        forbidden_state = True
-        # df = monthly_trigram[monthly_trigram['trigram'] == string]
-        # forbidden_state = False
+    # elif ngram == 3:
+    #     df = 0
+    #     print("За момента не се поддържат фрази с повече от 2 думи.")
+    #     forbidden_state = True
+    #     missing_state = True
+    #     # df = monthly_trigram[monthly_trigram['trigram'] == string]
+    #     # forbidden_state = False
     elif ngram == 0:
         df = 0
         forbidden_state = False
+        missing_state = True
         raise PreventUpdate
     else:
         df = 0
         print("За момента не се поддържат фрази с повече от 2 думи.")
         forbidden_state = True
+        missing_state = True
     return df, forbidden_state, missing_state
 
 app.layout = dbc.Container([
@@ -74,7 +79,7 @@ app.layout = dbc.Container([
         dbc.Navbar(
             dbc.Container(
                 [
-                    html.H2("За какво/кого говори българският Reddit?", className="text_gradient"),
+                    html.H2("За какво и кого говори българският Reddit?", className="text_gradient"),
                 ]
             ), 
         ),
@@ -154,8 +159,7 @@ app.layout = dbc.Container([
         dbc.Row([
             dbc.Col([], md=3),
             dbc.Col([
-            # html.H4(children="Описание на данните от Facebook Movement Range Maps", id="description_data"),
-            dcc.Markdown('''Българският Reddit (r/bulgaria) е относително малко кътче в Интернет пространството, но пък в него потребителите дискутират актуални събития за страната и би било интересно да се проследяват трендове за различните теми, хора и събития, които се обсъждани на платформата. Затова създадох този инструмент, вдъхновен от [Google Ngram Viewer](https://books.google.com/ngrams). Данните използвани за създаването му бяха взети от всички коментари (около 735 000) в българският subreddit – r/bulgaria от юли 2008 година до май 2022 година. Повече информация за това как бяха генерирани и обработени данни, и как беше създаден Ngram моделът може да прочете в този мой [блог пост](https://github.com/sakelariev/reddit-scraper). Отвореният код на приложението може да разгледате (и използвате както си пожелаете) в [Github](https://github.com/sakelariev/reddit-scraper).''')
+            dcc.Markdown('''Българският Reddit (r/bulgaria) е относително малко кътче в Интернет пространството, но пък в него потребителите дискутират актуални събития за страната и би било интересно да се проследяват трендове за различните теми, хора и събития, които се обсъждат там. За тази цел създадох този инструмент, вдъхновен от [Google Books Ngram Viewer](https://books.google.com/ngrams). Данните използвани за създаването му бяха взети от всички коментари (около 735 000) в българският subreddit – r/bulgaria от началото на 2016 година до май 2022 година. Повече информация за това как бяха свалени и обработени коментарите, и как беше създаден Ngram моделът може да прочете в този [блог пост](https://github.com/sakelariev/reddit-scraper). Отвореният код на приложението може да разгледате (и използвате както си пожелаете) в [Github](https://github.com/sakelariev/reddit-scraper).''')
             ],
             md=6),
         
@@ -179,12 +183,8 @@ app.layout = dbc.Container([
     Input(component_id='input', component_property='value'),
     )
 def update_figure(n_clicks, smoothing, string):
-    # if n_submit is None:
-    #     raise PreventUpdate
-    # else:
-    print(string)
-    # smoothing = smoothing / 10
-    print(smoothing)
+    # print(string)
+    # print(smoothing)
     fig = go.Figure()
     for element in string.split(','):
         df = check_string(element)[0]
@@ -192,23 +192,25 @@ def update_figure(n_clicks, smoothing, string):
         check_missing = check_string(element)[2]
         element = element.rstrip()
         element = element.lstrip()
-        df['average'] = df.ratio.rolling(smoothing).mean()
+        # Fill in all missing monthly values with 0 - this makes the plot look correct now
+        df = (df.set_index('date').reindex(pd.date_range('2016-01-01', '2022-05-01', freq='MS')).rename_axis(['date']).fillna(0).reset_index())
+        df['average'] = df.ratio.rolling(smoothing).mean()  
         if double_check == False and check_missing == False:
             if smoothing <= 1:
                 fig.add_trace(go.Scatter(x=df['date'], y=df['ratio'],
                                     mode='lines+markers',
                                     name=element,
-                                    # line_shape='spline',
-                                    # line={'smoothing' : 0.5}
+                                    line_shape='spline',
+                                    line={'smoothing' : 0.6}
                                     ))
             else:
                 fig.add_trace(go.Scatter(x=df['date'], y=df['average'],
                 mode='lines+markers',
                 name=element,
-                # line_shape='spline',
-                # line={'smoothing' : 0.5}
+                line_shape='spline',
+                line={'smoothing' : 0.6}
                 ))
-        fig.update_traces(mode="lines", hovertemplate=None)
+        fig.update_traces(mode="lines", hovertemplate=None, connectgaps=True)
         fig.update_xaxes(showgrid=False, ticks="inside", tickangle=0, ticklabelstep=1)
         fig.update_yaxes(tickformat = '%')
         fig.update_layout(hovermode="x unified", template = "plotly_white", xaxis=dict(tickformat="%B<br>%Y"), hoverlabel_namelength=-1, legend=dict(orientation="h", yanchor="bottom", y=1.03, xanchor="center", x=0.5))
@@ -254,7 +256,7 @@ def trigger_notification(string, is_open):
     Input(component_id='random_shuffle', component_property='n_clicks'),
     )
 def shuffle_random_ideas(n_clicks):
-    random_ideas = ["Левски,ЦСКА,Лудогорец", "Копейкин,Костадин Костадинов", "Бойко Борисов,Кирил Петков", "Възраждане,ДПС", "Ковид,Ваксина", "България, Русия, САЩ", "Америка, САЩ", "Ванга, Дънов"]
+    random_ideas = ["Левски,ЦСКА,Лудогорец", "Копейкин,Костадин Костадинов", "Бойко Борисов,Кирил Петков", "Възраждане,ДПС", "Ковид,Ваксина", "Украйна,Русия,САЩ", "Ванга,Дънов", "Меркел,Орбан", "Путин,Ердоган", "Гешев,Борисов", "Слави,Бойко", "мразя,обичам", "олио,зехтин", "инфлация,кредит", "мутри,орки", "фалшиви новини,fake news"]
     draw_random = random.choice(random_ideas)
     return draw_random
 
