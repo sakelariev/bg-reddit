@@ -9,6 +9,7 @@ import re
 import pandas as pd
 import random
 import glob
+# import sqlite3
 
 
 # External stylesheets and scripts
@@ -24,8 +25,10 @@ monthly_unigram = pd.concat((pd.read_csv(f, parse_dates=['date']) for f in all_u
 all_bigram = glob.glob("data/bigram/*.csv")
 monthly_bigram = pd.concat((pd.read_csv(f, parse_dates=['date']) for f in all_bigram))
 
-# monthly_unigram = pd.read_csv("data/monthly_unigram.csv", index_col=0, parse_dates=['date'])
-# monthly_bigram = pd.read_csv("data/monthly_bigram.csv", index_col=0, parse_dates=['date'])
+
+# Alternative way to get data - from SQLite
+# conn = sqlite3.connect("data/reddit_bg.db", check_same_thread=False)
+
 
 # Main app 
 app = Dash(__name__, external_stylesheets=external_stylesheets, external_scripts=external_scripts)
@@ -48,20 +51,17 @@ def check_string(string):
     string = string.rstrip()
     string = string.lstrip()
     if ngram == 1:
+        # query = "SELECT * FROM unigram_monthly WHERE unigram='" + string + "';"
+        # df = pd.read_sql_query(query, conn, parse_dates=['date'])
         df = monthly_unigram[monthly_unigram['unigram'] == string]
         missing_state = data_missing(df)
         forbidden_state = False
     elif ngram == 2:
+        # query = "SELECT * FROM bigram_monthly WHERE bigram='" + string + "';"
+        # df = pd.read_sql_query(query, conn, parse_dates=['date'])
         df = monthly_bigram[monthly_bigram['bigram'] == string]
         missing_state = data_missing(df)
         forbidden_state = False
-    # elif ngram == 3:
-    #     df = 0
-    #     print("За момента не се поддържат фрази с повече от 2 думи.")
-    #     forbidden_state = True
-    #     missing_state = True
-    #     # df = monthly_trigram[monthly_trigram['trigram'] == string]
-    #     # forbidden_state = False
     elif ngram == 0:
         df = 0
         forbidden_state = False
