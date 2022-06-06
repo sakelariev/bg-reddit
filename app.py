@@ -89,11 +89,16 @@ app.layout = dbc.Container([
         dbc.Col([
         ], md=2),     
         dbc.Col([
-        dbc.Button('Случайни идеи',id='random_shuffle', color="dark", outline=True, style={'font-size' : '13px'}),
+        dbc.Button('🎲 Случайни идеи',id='random_shuffle', color="dark", outline=True, style={'font-size' : '13px'}),
         ], md=1), 
         dbc.Col([
         html.Div([
         html.Div(dbc.Button('🔍',id='search', color='light', outline=True, style={'padding':'7px', 'color': '#fff','border-color': '#fff'}), style={'display' : 'inline-block', 'vertical-align': 'middle'}),
+        dbc.Tooltip(
+             "Търси",
+             target="search",
+             placement="bottom",
+         ),
         html.Div(
             dbc.Input(
             id="input",
@@ -107,10 +112,15 @@ app.layout = dbc.Container([
         ])], md=6),
         
         dbc.Col([
-        html.P("Интерполация", style={'font-size' : '13px', 'text-align' :'center', 'padding' : '0px', 'margin' : '0px'}),
-        dcc.Slider(min=0, max=12, value=0, step=1, id='smoothing', drag_value=1, marks=None,
+        html.P("Интерполация", id="inter", style={'font-size' : '13px', 'text-align' :'center', 'padding' : '0px', 'margin' : '0px'}),
+        dcc.Slider(min=1, max=12, value=1, step=1, id='smoothing', drag_value=1, marks=None,
         tooltip={"placement": "bottom", "always_visible": True},
-        className="smoothing_slider")
+        className="smoothing_slider"),
+        dbc.Tooltip(
+              "Изравняване на данни с подвижна средна стойност. 1 са суровите необработени данни, 2 е средната стойност за два месеца, 3 е средната стойност за месеца и т.н.",
+              target="inter",
+              placement="top"
+          ),
         ], md=1),
         
         dbc.Col([
@@ -149,8 +159,11 @@ app.layout = dbc.Container([
         dbc.Col([
         ], md=1), 
         dbc.Col([
-        dcc.Graph(figure=fig, config=dict({'scrollZoom': False, "displaylogo": False, 'displayModeBar': False, 'showAxisDragHandles': False, 'locale' : 'bg'}),
-        id='main_graph')
+        dcc.Loading(
+        id="loading-graph",
+        type="dot",
+        children=dcc.Graph(figure=fig, config=dict({'scrollZoom': False, "displaylogo": False, 'displayModeBar': False, 'showAxisDragHandles': False, 'locale' : 'bg'}),
+        id='main_graph'))
         ], md=10),
         dbc.Col([
         ], md=1) 
@@ -187,7 +200,8 @@ def update_figure(n_clicks, smoothing, string):
     # print(string)
     # print(smoothing)
     fig = go.Figure()
-    for element in string.split(','):
+    colors_list = px.colors.qualitative.Plotly
+    for count, element in enumerate(string.split(',')):
         df = check_string(element)[0]
         double_check = check_string(element)[1]
         check_missing = check_string(element)[2]
@@ -199,19 +213,42 @@ def update_figure(n_clicks, smoothing, string):
         if double_check == False and check_missing == False:
             if smoothing <= 1:
                 fig.add_trace(go.Scatter(x=df['date'], y=df['ratio'],
-                                    mode='lines+markers',
+                                    mode='lines',
                                     name=element,
+                                    legendgroup=element,
                                     line_shape='spline',
-                                    line={'smoothing' : 0.6}
+                                    line={'smoothing' : 0.6, 'color' : colors_list[count]}
                                     ))
+                # add traces for annotations and text for end of lines
+                fig.add_scatter(x=df['date'].tail(1), y=df['ratio'].tail(1),
+                 mode='text',
+                 text=" " + element,
+                 hoverinfo='skip',
+                 textfont=dict(color=colors_list[count]),
+                 textposition='middle right',
+                 cliponaxis=False,
+                 legendgroup=element,
+                 showlegend=False)
             else:
                 fig.add_trace(go.Scatter(x=df['date'], y=df['average'],
-                mode='lines+markers',
+                mode='lines',
                 name=element,
+                legendgroup=element,
                 line_shape='spline',
-                line={'smoothing' : 0.6}
+                line={'smoothing' : 0.6, 'color' : colors_list[count]}
                 ))
-        fig.update_traces(mode="lines", hovertemplate=None, connectgaps=True)
+                # add traces for annotations and text for end of lines
+                fig.add_scatter(x=df['date'].tail(1), y=df['average'].tail(1),
+                  mode='text',
+                  text=" " + element,
+                  hoverinfo='skip',
+                  cliponaxis=False,
+                  textfont=dict(color=colors_list[count]),
+                  textposition='middle right',
+                  legendgroup=element,
+                  showlegend=False)
+
+        fig.update_traces(hovertemplate=None, connectgaps=True)
         fig.update_xaxes(showgrid=False, ticks="inside", tickangle=0, ticklabelstep=1)
         fig.update_yaxes(tickformat = '%')
         fig.update_layout(hovermode="x unified", template = "plotly_white", xaxis=dict(tickformat="%B<br>%Y"), hoverlabel_namelength=-1, legend=dict(orientation="h", yanchor="bottom", y=1.03, xanchor="center", x=0.5))
@@ -257,7 +294,7 @@ def trigger_notification(string, is_open):
     Input(component_id='random_shuffle', component_property='n_clicks'),
     )
 def shuffle_random_ideas(n_clicks):
-    random_ideas = ["Левски,ЦСКА,Лудогорец", "Копейкин,Костадин Костадинов", "Бойко Борисов,Кирил Петков", "Възраждане,ДПС", "Ковид,Ваксина", "Украйна,Русия,САЩ", "Ванга,Дънов", "Меркел,Орбан", "Путин,Ердоган", "Гешев,Борисов", "Слави,Бойко", "мразя,обичам", "олио,зехтин", "инфлация,кредит", "мутри,орки", "фалшиви новини,fake news"]
+    random_ideas = ["Левски,ЦСКА,Лудогорец", "Копейкин,Костадин Костадинов", "Бойко Борисов,Кирил Петков", "Възраждане,ДПС", "Ковид,Ваксина", "Украйна,Русия,САЩ", "Ванга,Дънов", "Меркел,Орбан", "Путин,Ердоган", "Гешев,Борисов", "Слави,Бойко", "мразя,обичам", "олио,зехтин", "инфлация,кредит", "НАТО,ЕС", "фалшиви новини,fake news"]
     draw_random = random.choice(random_ideas)
     return draw_random
 
