@@ -3,7 +3,7 @@
 <!-- ABOUT THE PROJECT -->
 ## About the project
 
-[![Bulgarian Reddit N-gram viewer][assets/screenshot.png]](assets/screenshot.png?raw=true)
+![Bulgarian Reddit N-gram viewer](https://github.com/sakelariev/bg-reddit/tree/main/assets/screenshot.png?raw=true)
 
 I wanted to go through the whole process of building a similar tool to Google Ngram Viewer, so I decided to build this small app, that visualises the trends in uni- and bigrams in the main Bulgarian subreddit - r/bulgaria. I downloaded all the data from 2016 to May 2022 using [subreddit-comments-dl](https://github.com/pistocop/subreddit-comments-dl).
 
