@@ -67,7 +67,6 @@ All you need to do is give appropriate credit.
 
 Ivaylo Sakelariev - [@sakelariev](https://twitter.com/sakelariev)
 
-Live App Link: [http://reddit.ivaylo.xyz](http://reddit.ivaylo.xyz)
 
 
 
